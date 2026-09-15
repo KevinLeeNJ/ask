@@ -1,0 +1,5 @@
+.devtmp/*
+!.devtmp/.gitkeep
+/ask
+.codegraph/
+/dist/

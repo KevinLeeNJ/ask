@@ -1,0 +1,58 @@
+version: 2
+
+project_name: ask
+
+before:
+  hooks:
+    - go mod tidy
+    - go test ./...
+
+builds:
+  - id: ask
+    main: ./cmd/ask
+    binary: ask
+    env:
+      - CGO_ENABLED=0
+    flags:
+      - -trimpath
+    goos:
+      - darwin
+      - linux
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w
+      - -X github.com/KevinLeeNJ/ask/internal/version.Version={{ .Version }}
+      - -X github.com/KevinLeeNJ/ask/internal/version.Commit={{ .Commit }}
+      - -X github.com/KevinLeeNJ/ask/internal/version.Built={{ .CommitDate }}
+
+archives:
+  - id: ask
+    formats:
+      - tar.gz
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    format_overrides:
+      - goos: windows
+        formats:
+          - zip
+    files:
+      - LICENSE
+      - README.md
+
+checksum:
+  name_template: checksums.txt
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^chore:"
+
+release:
+  github:
+    owner: KevinLeeNJ
+    name: ask
