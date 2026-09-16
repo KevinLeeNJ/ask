@@ -1,206 +1,208 @@
 # ask
 
-`ask` 是一个终端快捷 AI 问答工具，面向快速提问和连续追问。它不会扫描当前仓库，也不会启动 Agent 工作流。
+[English](README.md) | [简体中文](README.zh-CN.md)
 
-## 功能
+`ask` is a fast terminal AI question-and-answer tool for quick questions and follow-ups. It does not inspect the current repository or start agent workflows.
 
-- 一条命令快速提问，并自动保存对话上下文。
-- 支持 OpenAI Chat Completions、OpenAI Responses 和 Anthropic Messages 兼容 API。
-- 支持流式 Markdown、独立展示 reasoning，并在正式回答开始时折叠思考内容。
-- 使用本地 SQLite 保存对话记录，支持选择、重命名、删除和保留策略。
-- `ask config` 提供菜单式配置和隐藏 API key 输入。
-- 对话会继承最近一次使用的 Provider 和模型；命令参数可临时覆盖。
-- 支持纯文本、管道、JSON 和不同终端能力下的输出模式。
+## Features
 
-## 安装
+- Ask in one command and automatically preserve conversation context.
+- Supports OpenAI Chat Completions, OpenAI Responses, and Anthropic Messages-compatible APIs.
+- Streams Markdown, presents reasoning separately, and collapses thinking when the answer begins.
+- Stores conversations in local SQLite with selection, renaming, deletion, and retention policies.
+- `ask config` provides menu-based setup and hidden API key input.
+- Conversations inherit the most recently used provider and model; command flags override them for one request.
+- Supports plain-text, piped, JSON, and terminal capability-aware output modes.
 
-安装脚本会自动识别 macOS、Linux 以及 `amd64`、`arm64` 架构，下载最新 release 中的对应二进制，并校验 SHA-256。
+## Installation
 
-macOS 或 Linux：
+The install script detects macOS, Linux, `amd64`, and `arm64`, downloads the matching binary from the latest release, and verifies its SHA-256 checksum.
+
+macOS or Linux:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/KevinLeeNJ/ask/main/install.sh | sh
 ```
 
-默认安装到 `$HOME/.local/bin/ask`。如果该目录不在 `PATH` 中，脚本会输出需要添加的配置。也可以直接指定目录：
+The default install location is `$HOME/.local/bin/ask`. If that directory is not in `PATH`, the script prints the configuration you need to add. You can also choose another directory:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/KevinLeeNJ/ask/main/install.sh |
   sh -s -- --install-dir "$HOME/bin"
 ```
 
-安装指定版本：
+Install a specific version:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/KevinLeeNJ/ask/main/install.sh |
   ASK_VERSION=v0.1.0 sh
 ```
 
-Windows 可以在 Git Bash 或 WSL 中运行安装脚本，也可以直接从 [Releases](https://github.com/KevinLeeNJ/ask/releases) 下载对应的 `.zip` 或 `.tar.gz`。
+On Windows, run the script in Git Bash or WSL, or download the appropriate `.zip` or `.tar.gz` directly from [Releases](https://github.com/KevinLeeNJ/ask/releases).
 
-安装完成后检查：
+Verify the installation:
 
 ```bash
 ask --version
 ```
 
-## 快速开始
+## Quick Start
 
-首次使用时运行配置向导：
+Run the setup wizard on first use:
 
 ```bash
 ask config
 ```
 
-向导会完成以下步骤：
+The wizard performs these steps:
 
-1. 选择 OpenAI Chat Completions、OpenAI Responses 或 Anthropic Messages 兼容协议。
-2. 配置 Provider ID、Base URL 和请求超时。
-3. 隐藏输入 API key。
-4. 获取并选择可用模型，或者手工输入模型 ID。
-5. 选择默认模型。
-6. 预览并确认 shell profile 写入内容。
-7. 保存配置。
+1. Select OpenAI Chat Completions, OpenAI Responses, or Anthropic Messages.
+2. Configure the provider ID, base URL, and request timeout.
+3. Enter the API key with hidden input.
+4. Fetch and select an available model, or enter a model ID manually.
+5. Select the default model.
+6. Preview and confirm the shell profile changes.
+7. Save the configuration.
 
-API key 不写入 `config.toml` 或 SQLite。写入 shell profile 后，执行界面显示的 `source` 命令，或者重新打开终端。
+The API key is not written to `config.toml` or SQLite. After it is added to your shell profile, run the displayed `source` command or reopen the terminal.
 
-环境变量名由 Provider ID 自动生成：转为大写，将 `-` 替换为 `_`，最后追加 `_API_KEY`。例如：
+The environment variable name is generated from the provider ID: convert it to uppercase, replace `-` with `_`, and append `_API_KEY`. For example:
 
 ```text
 opencode       -> OPENCODE_API_KEY
 openai-main    -> OPENAI_MAIN_API_KEY
 ```
 
-配置完成后直接提问：
+After configuration, ask directly:
 
 ```bash
-ask 解释 Go 的逃逸分析
-ask 比较 PostgreSQL 和 SQLite
+ask "Explain Go escape analysis"
+ask "Compare PostgreSQL and SQLite"
 ```
 
-## 常用命令
+## Common Commands
 
 ```bash
-# 普通提问；多个位置参数会合并成一个问题
-ask 你是什么模型 你的架构是什么
+# Ask a question; multiple positional arguments are joined into one prompt
+ask "What model are you?" "What is your architecture?"
 
-# 开始新对话
-ask --new 比较 PostgreSQL 和 SQLite
+# Start a new conversation
+ask --new "Compare PostgreSQL and SQLite"
 
-# 继续指定对话，支持完整 ID 或唯一前缀
-ask --conversation 0192a 继续上一段分析
+# Continue a specific conversation by full ID or unique prefix
+ask --conversation 0192a "Continue the previous analysis"
 
-# 将保留词作为普通问题
+# Treat a reserved word as a normal question
 ask -- config
 
-# 临时指定 Provider 和模型
-ask --provider opencode --model deepseek-v4.1-flash 分析这个竞态条件
+# Override the provider and model for one request
+ask --provider opencode --model deepseek-v4.1-flash "Analyze this race condition"
 
-# 临时开启或关闭思考
-ask --thinking 分析这个死锁
-ask --no-thinking 将这句话翻译成英文
+# Enable or disable thinking for one request
+ask --thinking "Analyze this deadlock"
+ask --no-thinking "Translate this sentence into English"
 
-# 对话管理
+# Manage conversations
 ask conversations
 ask conversations list
 
-# 机器可读输出
-ask --json 概括这段日志
+# Machine-readable output
+ask --json "Summarize this log"
 ```
 
-查看全部参数：
+View all flags:
 
 ```bash
 ask --help
 ```
 
-## 对话与模型路由
+## Conversation and Model Routing
 
-已有对话会优先沿用该对话最新一次实际使用的 Provider 和模型。`--provider` 和 `--model` 只覆盖当前调用，不会修改永久配置。
+An existing conversation reuses the provider and model most recently used in that conversation. `--provider` and `--model` override only the current request and do not change the saved configuration.
 
-默认模型由 `config.toml` 中的 `active_provider` 和对应 Provider 的 `default_model` 决定。
+The default model is determined by `active_provider` in `config.toml` and the corresponding provider's `default_model`.
 
-## 思考模式
+## Thinking Mode
 
-`reasoning.mode` 支持：
+`reasoning.mode` supports:
 
-- `auto`：使用本地多语言启发式规则判断是否需要思考，不发送额外探测请求；开启时只使用当前模型的最低有效等级。
-- `on`：强制开启思考，使用最低有效等级。
-- `off`：关闭思考。
+- `auto`: Uses local multilingual heuristics to decide whether thinking is needed without making an extra probe request. When enabled, it uses the current model's lowest effective level.
+- `on`: Forces thinking on using the lowest effective level.
+- `off`: Disables thinking.
 
-临时覆盖：
+Override it for one request:
 
 ```bash
-ask --thinking 分析这个内存泄漏
-ask --no-thinking 将 JSON 转成 YAML
+ask --thinking "Analyze this memory leak"
+ask --no-thinking "Convert JSON to YAML"
 ```
 
-遇到内置能力表未覆盖的模型时，显式开启思考会尝试从 models.dev 获取公开的 reasoning 元数据并缓存最低有效等级。
+When a model is not covered by the built-in capability table, explicitly enabling thinking attempts to fetch public reasoning metadata from models.dev and cache the lowest effective level.
 
-## 输出模式
+## Output Modes
 
-- `plain`：原始 Markdown，无 ANSI，适用于管道、重定向和不支持终端控制的场景。
-- `inline`：只追加输出，不使用清屏或光标回退。
-- `full`：在安全 TTY 中使用局部重绘和 Markdown 语义渲染。
-- `auto`：根据 stdout 和终端能力自动选择。
+- `plain`: Raw Markdown without ANSI, suitable for pipes, redirects, and terminals that do not support control sequences.
+- `inline`: Appends output without clearing the screen or moving the cursor backward.
+- `full`: Uses partial redraws and semantic Markdown rendering in a safe TTY.
+- `auto`: Selects a mode based on stdout and terminal capabilities.
 
-stdout 只承载正式回答或 JSON；进度、思考内容、错误和 usage 写入 stderr。
+stdout carries only the final answer or JSON; progress, reasoning, errors, and usage are written to stderr.
 
-## 配置文件
+## Configuration
 
-默认配置位置：
+Default configuration paths:
 
 ```text
 macOS / Linux: $HOME/.config/ask/config.toml
 Windows:       %AppData%\ask\config.toml
 ```
 
-SQLite 对话数据库位于同一目录：
+The SQLite conversation database is stored in the same directory:
 
 ```text
 ask.db
 ```
 
-可以使用 `ASK_CONFIG_FILE` 指定其他配置文件：
+Use `ASK_CONFIG_FILE` to select another configuration file:
 
 ```bash
 ASK_CONFIG_FILE="$HOME/.config/ask/work.toml" ask config
-ASK_CONFIG_FILE="$HOME/.config/ask/work.toml" ask 你好
+ASK_CONFIG_FILE="$HOME/.config/ask/work.toml" ask "Hello"
 ```
 
-## 卸载
+## Uninstall
 
-如果使用默认安装目录：
+If you used the default install directory:
 
 ```bash
 rm "$HOME/.local/bin/ask"
 ```
 
-如需同时删除配置、密钥和对话记录：
+To remove configuration, credentials, and conversation history as well:
 
 ```bash
 rm -rf "$HOME/.config/ask"
 ```
 
-如果配置向导向 shell profile 写入了 API key，请手动删除对应的受管理区块。
+If the setup wizard added an API key to your shell profile, manually remove the corresponding managed block.
 
-## 开发
+## Development
 
-需要 Go 1.25 或更高版本。
+Go 1.25 or newer is required.
 
 ```bash
 go test ./...
 go vet ./...
 ```
 
-发布由 GoReleaser 和 GitHub Actions 自动完成。维护者对目标 commit 打版本 tag 并推送：
+Releases are automated with GoReleaser and GitHub Actions. Maintainers tag and push the target commit:
 
 ```bash
 git tag v0.1.1
 git push origin v0.1.1
 ```
 
-工作流会构建 macOS、Linux、Windows 的 `amd64` 和 `arm64` 二进制，生成校验文件，并创建 GitHub Release。
+The workflow builds `amd64` and `arm64` binaries for macOS, Linux, and Windows, creates checksum files, and publishes a GitHub Release.
 
 ## License
 
